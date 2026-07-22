@@ -1,0 +1,93 @@
+# Single-host MVP stack — frontend + backend + Caddy front door, one file.
+# The Caddyfile is inlined below via `configs`, so there is nothing else to ship.
+#
+# On the EC2 host:
+#   deploy/docker-compose.yml   (this file)
+#   deploy/.env                 (backend config — you maintain it, never commit)
+#
+#   aws ecr get-login-password --region us-east-2 | docker login --username AWS \
+#     --password-stdin 376218549617.dkr.ecr.us-east-2.amazonaws.com
+#   docker compose up -d
+#
+# Both api and frontend are pulled from ECR. The frontend's API URL is baked into
+# its image at build time (see the frontend service), so nothing needs building here.
+#
+# Caddy owns :80 and :443. It automatically obtains and renews Let's Encrypt TLS
+# certs per hostname and redirects HTTP->HTTPS. Two origins:
+#   https://klearnote.ai      -> frontend
+#   https://api.klearnote.ai  -> backend
+# Because these are DIFFERENT origins, the backend must send CORS headers for
+# https://klearnote.ai (set CORS_ORIGINS in .env), and NEXT_PUBLIC_API_URL must be
+# https://api.klearnote.ai (baked into the frontend image at build time).
+#
+# Cert issuance prerequisites: klearnote.ai and api.klearnote.ai must already have
+# public A-records pointing at this host's EIP, and 80 + 443 must be reachable.
+# Until DNS is live Caddy serves an untrusted/self-signed state; it issues real
+# certs automatically once the challenge can complete.
+
+# ---- inlined Caddyfile (Compose injects this as a file into the container) ----
+configs:
+  caddyfile:
+    content: |
+      klearnote.ai {
+        # Audio uploads go straight to S3 via presigned POSTs and never transit
+        # Caddy; keep a sane ceiling for JSON bodies.
+        request_body {
+          max_size 25MB
+        }
+        reverse_proxy frontend:3000
+      }
+
+      api.klearnote.ai {
+        request_body {
+          max_size 25MB
+        }
+        reverse_proxy api:8000
+      }
+
+services:
+  # One-shot schema migration; api waits for it to finish successfully.
+  migrate:
+    image: ${API_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-api:latest}
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    image: ${API_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-api:latest}
+    env_file: .env
+    expose:
+      - "8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # The image already defines a /health HEALTHCHECK; compose reuses it.
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-frontend:latest}
+    expose:
+      - "3000"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

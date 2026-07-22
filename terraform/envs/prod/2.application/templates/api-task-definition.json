@@ -1,0 +1,45 @@
+[
+  {
+    "name": "${name}",
+    "image": "${image}",
+    "cpu": 0,
+    "essential": true,
+    "portMappings": [
+      {
+        "protocol": "tcp",
+        "containerPort": ${container_port},
+        "hostPort": ${host_port}
+      }
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "${awslogs_group}",
+        "awslogs-region": "${awslogs_region}",
+        "awslogs-stream-prefix": "${name}"
+      }
+    },
+    "secrets": [
+      {"name": "DATABASE_URL_POOLED", "valueFrom": "${secret_arn}:DATABASE_URL_POOLED::"},
+      {"name": "RESEND_API_KEY", "valueFrom": "${secret_arn}:RESEND_API_KEY::"},
+      {"name": "EMAIL_FROM", "valueFrom": "${secret_arn}:EMAIL_FROM::"},
+      {"name": "EMAIL_FROM_NAME", "valueFrom": "${secret_arn}:EMAIL_FROM_NAME::"},
+      {"name": "FRONTEND_URL", "valueFrom": "${secret_arn}:FRONTEND_URL::"},
+      {"name": "STRIPE_SECRET_KEY", "valueFrom": "${secret_arn}:STRIPE_SECRET_KEY::"},
+      {"name": "STRIPE_PUBLIC_KEY", "valueFrom": "${secret_arn}:STRIPE_PUBLIC_KEY::"},
+      {"name": "STRIPE_WEBHOOK_SECRET", "valueFrom": "${secret_arn}:STRIPE_WEBHOOK_SECRET::"},
+      {"name": "STEMS_LOCAL_DIR", "valueFrom": "${secret_arn}:STEMS_LOCAL_DIR::"},
+      {"name": "S3_BUCKET_INPUTS", "valueFrom": "${secret_arn}:S3_BUCKET_INPUTS::"},
+      {"name": "S3_BUCKET_OUTPUTS", "valueFrom": "${secret_arn}:S3_BUCKET_OUTPUTS::"},
+      {"name": "AWS_REGION", "valueFrom": "${secret_arn}:AWS_REGION::"},
+      {"name": "S3_BUCKET_STEMS", "valueFrom": "${secret_arn}:S3_BUCKET_STEMS::"}
+    ],
+    "linuxParameters": {
+      "initProcessEnabled": true
+    },
+    "mountPoints": [],
+    "volumesFrom": [],
+    "entryPoint": [],
+    "command": []
+  }
+]

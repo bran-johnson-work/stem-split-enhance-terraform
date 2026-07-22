@@ -1,0 +1,183 @@
+{
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "family": "poc-prod-api-task-definition",
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/poc-prod-ecs-task-execution-api-role",
+  "taskRoleArn": "arn:aws:iam::ACCOUNT_ID:role/poc-prod-ecs-task-api-role",
+  "containerDefinitions": [
+    {
+      "image": "<IMAGE>",
+      "name": "api",
+      "mountPoints": [],
+      "logConfiguration": {
+        "options": {
+          "awslogs-group": "poc-prod-api",
+          "awslogs-region": "ap-northeast-1",
+          "awslogs-stream-prefix": "api"
+        },
+        "logDriver": "awslogs"
+      },
+      "volumesFrom": [],
+      "entryPoint": [],
+      "command": [],
+      "cpu": 0,
+      "secrets": [
+        {
+          "name": "NODE_ENV",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:NODE_ENV::"
+        },
+        {
+          "name": "TZ",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:TZ::"
+        },
+        {
+          "name": "APP_NAME",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APP_NAME::"
+        },
+        {
+          "name": "APP_PORT",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APP_PORT::"
+        },
+        {
+          "name": "APP_PREFIX",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APP_PREFIX::"
+        },
+        {
+          "name": "JWT_ACCESS_TOKEN_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:JWT_ACCESS_TOKEN_SECRET::"
+        },
+        {
+          "name": "JWT_ACCESS_TOKEN_EXPIRATION_TIME",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:JWT_ACCESS_TOKEN_EXPIRATION_TIME::"
+        },
+        {
+          "name": "JWT_REFRESH_TOKEN_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:JWT_REFRESH_TOKEN_SECRET::"
+        },
+        {
+          "name": "JWT_REFRESH_TOKEN_EXPIRATION_TIME",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:JWT_REFRESH_TOKEN_EXPIRATION_TIME::"
+        },
+        {
+          "name": "POSTGRES_TYPE",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_TYPE::"
+        },
+        {
+          "name": "POSTGRES_HOST",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_HOST::"
+        },
+        {
+          "name": "POSTGRES_PORT",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_PORT::"
+        },
+        {
+          "name": "POSTGRES_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_USERNAME::"
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_PASSWORD::"
+        },
+        {
+          "name": "POSTGRES_DATABASE",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_DATABASE::"
+        },
+        {
+          "name": "POSTGRES_LOG",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_LOG::"
+        },
+        {
+          "name": "POSTGRES_EXTRA",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_EXTRA::"
+        },
+        {
+          "name": "POSTGRES_SSL_ENABLED",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_SSL_ENABLED::"
+        },
+        {
+          "name": "POSTGRES_SSL_REJECT_UNAUTHORIZED",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:POSTGRES_SSL_REJECT_UNAUTHORIZED::"
+        },
+        {
+          "name": "ASK_JAPAN_FE_DOMAIN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:ASK_JAPAN_FE_DOMAIN::"
+        },
+        {
+          "name": "AWS_REGION",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:AWS_REGION::"
+        },
+        {
+          "name": "MAIL_FROM",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:MAIL_FROM::"
+        },
+        {
+          "name": "MAIL_SECURE",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:MAIL_SECURE::"
+        },
+        {
+          "name": "S3_BUCKET",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:S3_BUCKET::"
+        },
+        {
+          "name": "MEDIA_CDN_DOMAIN",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:MEDIA_CDN_DOMAIN::"
+        },
+        {
+          "name": "GOOGLE_CLIENT_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:GOOGLE_CLIENT_ID::"
+        },
+        {
+          "name": "APPLE_BUNDLE_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_BUNDLE_ID::"
+        },
+        {
+          "name": "APPLE_SERVICE_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_SERVICE_ID::"
+        },
+        {
+          "name": "APPLE_TEAM_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_TEAM_ID::"
+        },
+        {
+          "name": "APPLE_KEY_ID",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_KEY_ID::"
+        },
+        {
+          "name": "APPLE_PRIVATE_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_PRIVATE_KEY::"
+        },
+        {
+          "name": "APPLE_REDIRECT_URI",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_REDIRECT_URI::"
+        },
+        {
+          "name": "APPLE_JWKS_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:APPLE_JWKS_URL::"
+        },
+        {
+          "name": "AI_MODERATION_PROVIDER",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:AI_MODERATION_PROVIDER::"
+        },
+        {
+          "name": "AI_MODERATION_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:ap-northeast-1:ACCOUNT_ID:secret:/prod/api:AI_MODERATION_API_KEY::"
+        }
+      ],
+      "portMappings": [
+        {
+          "protocol": "tcp",
+          "containerPort": 3000,
+          "hostPort": 3000
+        }
+      ],
+      "essential": true,
+      "linuxParameters": {
+        "initProcessEnabled": true
+      }
+    }
+  ],
+  "memory": "1024",
+  "cpu": "512"
+}

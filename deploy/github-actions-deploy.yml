@@ -1,0 +1,72 @@
+# Place this file at .github/workflows/deploy.yml in the app repo.
+# The deploy/ folder (api-task-definition.json) should also be in the app repo.
+#
+# Prerequisites:
+# 1. Create IAM OIDC provider for GitHub Actions in AWS account
+# 2. Create IAM role with trust policy for GitHub OIDC and permissions:
+#    - ECR: GetAuthorizationToken, BatchGetImage, PutImage, InitiateLayerUpload, etc.
+#    - ECS: RegisterTaskDefinition, UpdateService, DescribeServices, DescribeTaskDefinition
+#    - IAM: PassRole (for execution role and task role)
+# 3. Set GitHub Actions variables:
+#    - AWS_ACCOUNT_ID
+#    - AWS_REGION: ap-northeast-1
+
+name: Deploy API to ECS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY: poc-prod-api
+  ECS_CLUSTER: poc-prod-api-ecs-cluster
+  ECS_SERVICE: poc-prod-api-ecs-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ vars.AWS_ACCOUNT_ID }}:role/github-actions-deploy-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Render ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: deploy/api-task-definition.json
+          container-name: api
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

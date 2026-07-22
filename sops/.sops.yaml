@@ -1,0 +1,4 @@
+creation_rules:
+  - path_regex: secrets\.prod\.yaml$
+    kms: "arn:aws:kms:us-east-2:376218549617:key/8e8fd33e-737e-4b8b-8f1a-44c0bc7b910e"
+    aws_profile: "klearnnote"
