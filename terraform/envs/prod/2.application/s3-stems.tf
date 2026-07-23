@@ -9,7 +9,7 @@ module "s3_stems" {
       {
         allowed_headers = ["*"]
         allowed_methods = ["GET", "HEAD", "PUT", "POST"]
-        allowed_origins = ["https://${var.domain_name}"]
+        allowed_origins = ["https://${var.domain_name}", "http://localhost:3000"]
         expose_headers  = ["ETag"]
         max_age_seconds = 3600
       }
