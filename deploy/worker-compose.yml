@@ -1,0 +1,17 @@
+
+
+services:
+  worker:
+    image: ${WORKER_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-worker:latest}
+    env_file: .env
+    environment:
+      WORKER_DEVICE: cuda
+    deploy:
+      replicas: 4
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped

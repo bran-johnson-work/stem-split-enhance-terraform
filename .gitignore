@@ -20,6 +20,8 @@ terraform.rc
 # Runtime secrets — plaintext .env holds DB password etc. Never commit.
 .env
 .env.*
+*.env.*
+*.env
 !.env.example
 
 # IDE

@@ -22,6 +22,15 @@ resource "aws_instance" "ec2_instance" {
   monitoring              = var.monitoring
   user_data               = var.user_data
 
+  # Enforce IMDSv2 (token required — blocks legacy IMDSv1/SSRF-style GET reads).
+  # hop_limit defaults to 1; set to 2 for hosts that run containers on the Docker
+  # bridge network, so boto3 inside a container can still reach the instance profile.
+  metadata_options {
+    http_endpoint               = "enabled"
+    http_tokens                 = "required"
+    http_put_response_hop_limit = var.metadata_hop_limit
+  }
+
   tags = {
     Name = "${var.project}-${var.env}-${var.name}-ec2-instance"
   }

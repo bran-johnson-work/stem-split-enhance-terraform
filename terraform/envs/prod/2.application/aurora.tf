@@ -7,13 +7,13 @@ module "security_group_aurora" {
   name   = "aurora"
   vpc_id = data.terraform_remote_state.general.outputs.vpc_id
   ingress_rules = [
-    # {
-    #   from_port       = 5432
-    #   to_port         = 5432
-    #   protocol        = "tcp"
-    #   security_groups = [module.security_group_worker.security_group_id]
-    #   description     = "EC2 Worker"
-    # },
+    {
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [module.security_group_worker.security_group_id]
+      description     = "EC2 Worker"
+    },
     {
       from_port       = 5432
       to_port         = 5432

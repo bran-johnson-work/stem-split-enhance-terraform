@@ -1,0 +1,24 @@
+﻿Estimate summary
+link,https://calculator.aws/#/estimate?trk=e8c13544-17d6-4cc0-abab-a4348449de09&sc_channel=ps&ef_id=EAIaIQobChMIpdGbve7ylQMVKCRECB2d3h0NEAAYASABEgLdfvD_BwE&gads_camp=23527793744&gads_ag=194311064284&gads_ad=795877020710&gads_kw=aws%20pricing&gads_matchtype=e&gads_network=g&gads_device=c&gads_geo=1023929&gad_source=1&gad_campaignid=23527793744&gbraid=0AAAAADjHtp-UqZKSfdjcOV8mpEDPHMbdw&gclid=EAIaIQobChMIpdGbve7ylQMVKCRECB2d3h0NEAAYASABEgLdfvD_BwE&id=ccee427074f2316f12c3b3266833ae334c53a615
+Upfront cost,Monthly cost,Total 12 months cost,Currency
+0,510.51,6126.12,USD
+,,* Includes upfront cost
+
+
+Detailed Estimate
+Group hierarchy,Region,Description,Service,Upfront,Monthly,First 12 months total,Currency,Status,Configuration summary
+Klearnote.ai MVP > Compute,US East (Ohio),FE/BE Instance,Amazon EC2 ,0,64.73599999999999,776.83,USD,,"Tenancy (Shared Instances), Operating system (Linux), Workload (Consistent, Number of instances: 1), Advance EC2 instance (t3.large), Pricing strategy (On-Demand Utilization: 100 %Utilized/Month), Enable monitoring (disabled), EBS Storage amount (50 GB), DT Inbound: Not selected (0 TB per month), DT Outbound: Not selected (0 TB per month), DT Intra-Region: (0 TB per month)"
+Klearnote.ai MVP > Compute,US East (Ohio),Worker Instance,Amazon EC2 ,0,387.98,4655.76,USD,,"Tenancy (Shared Instances), Operating system (Linux), Workload (Consistent, Number of instances: 1), Advance EC2 instance (g4dn.xlarge), Pricing strategy (On-Demand Utilization: 100 %Utilized/Month), Enable monitoring (disabled), EBS Storage amount (50 GB), DT Inbound: Not selected (0 TB per month), DT Outbound: Not selected (0 TB per month), DT Intra-Region: (0 TB per month)"
+Klearnote.ai MVP > Data/Storage,US East (Ohio),s3 media,S3 Standard,0,0.23,2.76,USD,,S3 Standard storage (10 GB per month)
+Klearnote.ai MVP > Data/Storage,US East (Ohio),s3 media,Data Transfer,0,0,0.00,USD,,
+Klearnote.ai MVP > Data/Storage,US East (Ohio),s3 stems output,S3 Standard,0,2.3,27.60,USD,,S3 Standard storage (100 GB per month)
+Klearnote.ai MVP > Data/Storage,US East (Ohio),s3 stems output,Data Transfer,0,0,0.00,USD,,
+Klearnote.ai MVP > Data/Storage,US East (Ohio),,Amazon Aurora PostgreSQL-Compatible DB,0,48.61,583.32,USD,,"Aurora PostgreSQL Cluster Configuration Options (Aurora Standard), Aurora PostgreSQL Serverless Version (Serverless), Database Engine (Aurora PostgreSQL), Number of Aurora Capacity Units (ACUs) (1), Pricing strategy (OnDemand), Storage amount (20 GB)"
+Klearnote.ai MVP > Other,US East (Ohio),,AWS Key Management Service,0,1,12.00,USD,,"Number of customer managed Customer Master Keys (CMK) (1), Number of symmetric requests (1)"
+Klearnote.ai MVP > Other,US East (Ohio),ElasticIP for FE/BE instance,Public IPv4 Address,0,3.65,43.80,USD,,Number of In-use public IPv4 addresses (1)
+Klearnote.ai MVP > Other,US East (Ohio),Registry for FE/BE/Worker images,Amazon Elastic Container Registry,0,2,24.00,USD,,Amount of data stored (20 GB per month)
+
+
+
+Acknowledgement
+"* AWS Pricing Calculator provides only an estimate of your AWS fees and doesn't include any taxes that might apply. Your actual fees depend on a variety of factors, including your actual usage of AWS services."

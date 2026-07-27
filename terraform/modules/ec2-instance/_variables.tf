@@ -71,3 +71,8 @@ variable "create_eip" {
   type        = bool
   default     = false
 }
+variable "metadata_hop_limit" {
+  description = "IMDS PUT response hop limit. Default 1 (host only). Set to 2 for hosts that run containers on the Docker bridge network so in-container boto3 can reach the instance profile."
+  type        = number
+  default     = 1
+}

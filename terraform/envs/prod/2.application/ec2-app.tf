@@ -127,4 +127,7 @@ module "ec2_app" {
   monitoring = false
   user_data  = file("${path.module}/scripts/app-user-data.sh")
   create_eip = true
+  # api/frontend/caddy run as containers on the Docker bridge; hop limit 2 lets
+  # in-container boto3 reach the instance profile via IMDS.
+  metadata_hop_limit = 2
 }
