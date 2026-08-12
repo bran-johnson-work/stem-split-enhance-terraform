@@ -80,10 +80,14 @@ $FrontendRepo    = 'poc-prod-frontend'
 $FrontendService = 'frontend'
 # Baked into the client bundle at BUILD time. Must be the public API origin.
 $FrontendApiUrl  = 'https://api.klearnote.ai'
-
-# --- worker (GPU separation stack) --- built ON the server from Dockerfile.worker
-$WorkerDockerfile = 'Dockerfile.worker'
-$WorkerRepo       = 'poc-prod-worker'   # image name; the box builds it locally, no ECR push
+# --- worker (GPU separation stack) --- built ON the server, two images, one per engine.
+# v1 = HT-Demucs (unchanged). v2 = Mel-Band RoFormer vocals + HT-Demucs rhythm.
+# Separate Dockerfiles on purpose: v1 is in production and a v2 dependency change must
+# not be able to alter the image it builds from. Both are tagged in the same ECR repo
+# (they're built and run on-box, so the repo name is just a local image name here).
+$WorkerDockerfileV1 = 'Dockerfile.worker'
+$WorkerDockerfileV2 = 'Dockerfile.worker.v2'
+$WorkerRepo         = 'poc-prod-worker'   # image name; the box builds it locally, no ECR push
 # CUDA torch wheel index baked in at BUILD time (on the box). cu128 matches the g4dn (T4)
 # driver on the worker host; use cu126 if that host's driver is older. See CLAUDE.md.
 $WorkerTorchIndexUrl = 'https://download.pytorch.org/whl/cu128'
@@ -197,7 +201,11 @@ function Build-Push-Backend {
 function Build-Push-Frontend {
   $image = "$Registry/${FrontendRepo}:$Tag"
   Step "build frontend -> $image (NEXT_PUBLIC_API_URL=$FrontendApiUrl)"
-  Invoke-Docker @('build', '--platform', 'linux/amd64', '--build-arg', "NEXT_PUBLIC_API_URL=$FrontendApiUrl", '-t', $image, $FrontendPath) "frontend build failed"
+  Invoke-Docker @(
+    'build', '--platform', 'linux/amd64',
+    '--build-arg', "NEXT_PUBLIC_API_URL=$FrontendApiUrl",
+    '-t', $image, $FrontendPath
+  ) "frontend build failed"
   Step "push $image"
   Invoke-Docker @('push', $image) "frontend push failed"
 }
@@ -207,8 +215,21 @@ function Build-Push-Frontend {
 # the checkout, docker build, then compose up. Run Command shells run as root, so docker/
 # git need no sudo. No ECR push/pull — compose runs the freshly built local image.
 function Deploy-Worker {
-  $image = "$Registry/${WorkerRepo}:$Tag"
-  Step "SSM worker: git ($Branch) -> build ($WorkerTorchIndexUrl) -> compose up  [may take many minutes]"
+  $imageV1 = "$Registry/${WorkerRepo}:v1-$Tag"
+  $imageV2 = "$Registry/${WorkerRepo}:v2-$Tag"
+
+  # Ship worker-compose.yml from this repo to the box every deploy. It used to live only
+  # on the box, edited in place: this script would build new v1/v2 images and then run
+  # `compose up` against whatever stale file was sitting in /opt/app. When the fleet split
+  # from one service into worker-v1 + worker-v2, the box still had the old single-`worker`
+  # file, so `up` tore down the running containers and started nothing — the images built
+  # fine and the deploy looked like it half-succeeded. The file is config, not secrets, so
+  # unlike .env it belongs in git and is safe to push through SSM.
+  $localCompose = Join-Path $PSScriptRoot $WorkerComposeFile
+  if (-not (Test-Path $localCompose)) { Fail "local compose not found: $localCompose" }
+  $composeB64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($localCompose))
+
+  Step "SSM worker: git ($Branch) -> build v1+v2 ($WorkerTorchIndexUrl) -> sync compose -> compose up  [may take many minutes]"
   $cmds = @(
     # 1. sync source (clone must already exist — the script never handles git tokens)
     "if [ ! -d '$WorkerRepoDir/.git' ]; then echo 'ERROR: no git checkout at $WorkerRepoDir - clone the backend repo there once (with credentials) before deploying.' >&2; exit 1; fi",
@@ -217,15 +238,29 @@ function Deploy-Worker {
     "git checkout $Branch",
     "git reset --hard origin/$Branch",
     "echo 'building from:' && git log -1 --oneline",
-    # 2. build the worker image on the host (GPU not needed to build; CUDA runtime is in the wheels)
-    "docker build -f $WorkerDockerfile --build-arg TORCH_INDEX_URL=$WorkerTorchIndexUrl -t $image .",
-    # 3. (re)start the replicas from the freshly built image. WORKER_IMAGE matches the
-    #    compose default, so `up` uses the local build and never tries to pull from ECR.
+    # 2. build both worker images on the host (GPU not needed to build; the CUDA runtime
+    #    ships in the wheels). They share every torch layer, so v2 adds only its own deps.
+    "docker build -f $WorkerDockerfileV1 --build-arg TORCH_INDEX_URL=$WorkerTorchIndexUrl -t $imageV1 .",
+    "if [ -f '$WorkerDockerfileV2' ]; then docker build -f $WorkerDockerfileV2 --build-arg TORCH_INDEX_URL=$WorkerTorchIndexUrl -t $imageV2 .; else echo 'NOTE: no $WorkerDockerfileV2 on this branch - skipping the v2 image.'; fi",
+    # 3. (re)start both fleets from the freshly built images. These vars match the compose
+    #    defaults, so `up` uses the local builds and never tries to pull from ECR.
     #    --force-recreate restarts all replicas (interrupts in-flight jobs; reaper requeues).
     "cd $WorkerRemoteDeployDir",
-    "export WORKER_IMAGE=$image",
-    "docker compose -f $WorkerComposeFile up -d --force-recreate",
+    # 2b. sync the compose file, keeping a timestamped backup of what was there. Then fail
+    #     fast if it does not parse, BEFORE `up` touches the running fleet — a broken file
+    #     must not be able to stop the workers and leave nothing in their place.
+    "[ -f $WorkerComposeFile ] && cp $WorkerComposeFile `"$WorkerComposeFile.bak.`$(date +%s)`" || true",
+    "printf %s '$composeB64' | base64 -d > $WorkerComposeFile",
+    "docker compose -f $WorkerComposeFile config --services",
+    "export WORKER_IMAGE_V1=$imageV1",
+    "export WORKER_IMAGE_V2=$imageV2",
+    # Only bring up v2 if its image actually exists, so deploying a branch without the
+    # v2 Dockerfile degrades to a v1-only fleet instead of failing the whole deploy.
+    # --remove-orphans: clears containers whose service no longer exists in the file, so a
+    # rename (e.g. `worker` -> `worker-v1`) doesn't leave the old fleet behind holding VRAM.
+    "if docker image inspect $imageV2 >/dev/null 2>&1; then docker compose -f $WorkerComposeFile up -d --force-recreate --remove-orphans; else docker compose -f $WorkerComposeFile up -d --force-recreate --remove-orphans worker-v1; fi",
     "docker compose -f $WorkerComposeFile ps",
+    "nvidia-smi --query-gpu=memory.used,memory.total --format=csv || true",
     # 4. reclaim disk from the previous image layers (no ECR lifecycle applies on-box)
     "docker image prune -f"
   )

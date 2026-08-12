@@ -1,17 +1,91 @@
 
 
+# Two worker fleets on the one GPU box, against the one Postgres queue.
+#
+#   worker-v1  — HT-Demucs (what has always run here). Claims engine_version = v1.
+#   worker-v2  — Mel-Band RoFormer vocals + HT-Demucs rhythm. Claims engine_version = v2.
+#
+# They are told apart ONLY by WORKER_ENGINE_VERSIONS. Both poll `processing_jobs` with
+# FOR UPDATE SKIP LOCKED filtered on that list, so a v1 container can never pick up a
+# v2 job — it has no RoFormer weights and would run the wrong model while labelling the
+# output "v2". Never widen worker-v1 to "v1,v2".
+#
+# ---------------------------------------------------------------------------
+# REPLICA BUDGET — read before changing the counts.
+#
+# This host is a g4dn.xlarge: ONE NVIDIA T4 with 16 GB of VRAM, shared by every
+# replica below. The old layout was 4 × v1 on that single card.
+#
+#   1 × v1 + 1 × v2  (total 2 — one container per model)
+#
+# One replica each is the deliberate starting point: it is the only layout where the
+# per-fleet VRAM footprint can actually be read off `nvidia-smi` (nothing else is
+# sharing the card), and v2's RoFormer model is still unmeasured on this box. Scale up
+# from here once you have numbers — v1 first, since it is the fleet serving customers.
+#
+# V2_BATCH_SIZE starts at 1 for the same reason. Raise it, or the replica counts, only
+# after watching `nvidia-smi` through a full job. Note that A/B dual-run renders each
+# upload twice, so v2 depth is also what sets how far the v2 queue lags.
+# ---------------------------------------------------------------------------
+
+x-worker-common: &worker-common
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    # Weights cache, shared by both fleets on purpose — they both use the demucs
+    # checkpoints, so one copy serves everyone. Without this every `--force-recreate`
+    # re-downloads ~400 MB of demucs (plus the RoFormer checkpoint for v2) from
+    # HuggingFace *unauthenticated*, which is both slow and rate-limited: the boot logs
+    # on this box already carry the "set a HF_TOKEN for higher rate limits" warning.
+    # Concurrent first-boots are safe (app/engine/weights.py writes a temp file and
+    # atomically renames).
+    - stem_weights:/cache/torch
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
 services:
-  worker:
-    image: ${WORKER_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-worker:latest}
-    env_file: .env
+  worker-v1:
+    <<: *worker-common
+    image: ${WORKER_IMAGE_V1:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-worker:v1-latest}
     environment:
       WORKER_DEVICE: cuda
+      # This image has no RoFormer stack. Keep it to v1 only.
+      WORKER_ENGINE_VERSIONS: v1
     deploy:
-      replicas: 4
+      replicas: ${WORKER_V1_REPLICAS:-1}
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    restart: unless-stopped
+
+  worker-v2:
+    <<: *worker-common
+    image: ${WORKER_IMAGE_V2:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-worker:v2-latest}
+    environment:
+      WORKER_DEVICE: cuda
+      WORKER_ENGINE_VERSIONS: v2
+      # Main VRAM dial. 1 is the safe start on a shared T4; the app default is 4.
+      V2_BATCH_SIZE: ${V2_BATCH_SIZE:-1}
+      V2_OVERLAP: ${V2_OVERLAP:-2}
+      # RoFormer runs ~2x v1's wall-clock. With the 90 s default the reaper would
+      # reclaim jobs that are merely slow, requeue them forever and burn GPU on work
+      # that never lands.
+      JOB_STALE_TIMEOUT_SECONDS: ${V2_JOB_STALE_TIMEOUT_SECONDS:-300}
+    deploy:
+      replicas: ${WORKER_V2_REPLICAS:-1}
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  stem_weights:
