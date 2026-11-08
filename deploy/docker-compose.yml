@@ -68,6 +68,17 @@ services:
     image: ${FRONTEND_IMAGE:-376218549617.dkr.ecr.us-east-2.amazonaws.com/poc-prod-frontend:latest}
     expose:
       - "3000"
+    # Deliberately NOT `env_file: .env` like api/migrate. That file holds the database
+    # password, Stripe keys and the JWT secret; the frontend needs none of them, and
+    # handing them to a public-facing Node process is free risk. Only the keys it
+    # actually reads are passed, interpolated from the same .env by Compose.
+    #
+    # The frontend now has NO runtime configuration at all. Its one server-only key
+    # was DEMO_ORIGIN, which pointed the /api/audio-proxy rewrite at the Streamlit
+    # demo host; that page and proxy were retired when the signed-in Demo page
+    # (/restoration) took over, so nothing is left to set here. Everything else it
+    # reads is NEXT_PUBLIC_*, inlined into the client bundle at build time — those
+    # are build args in deploy.ps1 and setting them here would do nothing.
     restart: unless-stopped
 
   caddy:
